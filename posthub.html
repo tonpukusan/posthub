@@ -138,59 +138,54 @@
     return Promise.resolve();
   }
 
-  // ★ ポップアップブロック回避：クリック起点で空ウインドウを全部開く
-  function openAllWindowsFirst() {
+  // ★ SNSウインドウを投稿ハブの右側に自動配置
+  function positionSNSWindow(win, offsetY = 0) {
+    if (!win || win.closed) return;
+    const x = window.screenX + window.outerWidth + 10;
+    const y = window.screenY + offsetY;
+    win.moveTo(x, y);
+    win.focus();
+  }
+
+  // ★ ポップアップブロック回避：空ウインドウを順番に開く
+  function openAllWindowsFirst(callback) {
     winX = window.open("about:blank", "SNS_X", "width=500,height=800");
-    winThreads = window.open("about:blank", "SNS_THREADS", "width=500,height=800");
-    winBsky = window.open("about:blank", "SNS_BSKY", "width=500,height=800");
-    winFb = window.open("about:blank", "SNS_FB", "width=500,height=800");
+    positionSNSWindow(winX, 0);
+
+    setTimeout(() => {
+      winThreads = window.open("about:blank", "SNS_THREADS", "width=500,height=800");
+      positionSNSWindow(winThreads, 50);
+    }, 50);
+
+    setTimeout(() => {
+      winBsky = window.open("about:blank", "SNS_BSKY", "width=500,height=800");
+      positionSNSWindow(winBsky, 100);
+    }, 100);
+
+    setTimeout(() => {
+      winFb = window.open("about:blank", "SNS_FB", "width=500,height=800");
+      positionSNSWindow(winFb, 150);
+      if (callback) callback();
+    }, 150);
   }
 
   // ★ 投稿 → X → Threads → Bluesky → Facebook を自動連続で開く
   postBtn.addEventListener("click", function() {
     const t = textarea.value;
 
-    // クリック起点で空ウインドウを開く（重要）
-    openAllWindowsFirst();
+    openAllWindowsFirst(() => {
+      copyToClipboard(t).finally(() => {
 
-    copyToClipboard(t).finally(() => {
+        // ① X
+        winX.location.href = "https://twitter.com/intent/tweet?text=" + encodeURIComponent(t);
+        positionSNSWindow(winX, 0);
 
-      // ① X
-      winX.location.href = "https://twitter.com/intent/tweet?text=" + encodeURIComponent(t);
+        // ② Threads
+        setTimeout(() => {
+          winThreads.location.href = "https://www.threads.net/intent/post";
+          positionSNSWindow(winThreads, 50);
+        }, 1200);
 
-      // ② Threads
-      setTimeout(() => {
-        winThreads.location.href = "https://www.threads.net/intent/post";
-      }, 1200);
-
-      // ③ Bluesky
-      setTimeout(() => {
-        winBsky.location.href = "https://bsky.app";
-      }, 2400);
-
-      // ④ Facebook
-      setTimeout(() => {
-        winFb.location.href = "https://www.facebook.com/";
-      }, 3600);
-    });
-  });
-
-  // ★ 全SNSウインドウを閉じる
-  closeAllBtn.addEventListener("click", function() {
-    [winX, winThreads, winBsky, winFb].forEach(w => {
-      if (w && !w.closed) w.close();
-    });
-  });
-
-  // ★ 投稿ハブが閉じられたら SNS も全部閉じる
-  window.addEventListener("beforeunload", function() {
-    [winX, winThreads, winBsky, winFb].forEach(w => {
-      if (w && !w.closed) w.close();
-    });
-  });
-
-})();
-</script>
-
-</body>
-</html>
+        // ③ Bluesky
+        setTimeout(() => {
+          winBsky.location.href = "https://
