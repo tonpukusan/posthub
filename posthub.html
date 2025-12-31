@@ -105,6 +105,7 @@
 
   <script>
   (function() {
+    // このタブをハブ専用に
     window.name = "MULTI_SNS_POST_HUB";
 
     const textarea = document.getElementById("text");
@@ -112,6 +113,17 @@
     const threadsBtn = document.getElementById("threadsBtn");
     const bskyBtn = document.getElementById("bskyBtn");
     const fbBtn = document.getElementById("fbBtn");
+
+    // ★ URL の ?text= を読み取って textarea に入れる
+    const params = new URLSearchParams(window.location.search);
+    const initialText = params.get("text") || "";
+    if (initialText && textarea) {
+      textarea.value = initialText;
+      setTimeout(() => {
+        textarea.focus();
+        textarea.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 50);
+    }
 
     let snsWindow = null;
 
@@ -141,11 +153,9 @@
 
     xBtn.addEventListener("click", function() {
       const t = textarea.value;
-
       copyToClipboard(t).finally(() => {
         const url = "https://twitter.com/intent/tweet?text=" + encodeURIComponent(t);
         openSNS(url);
-
         xBtn.disabled = true;
         threadsBtn.disabled = false;
       });
@@ -153,24 +163,22 @@
 
     threadsBtn.addEventListener("click", function() {
       openSNS("https://www.threads.net/intent/post");
-
       threadsBtn.disabled = true;
       bskyBtn.disabled = false;
     });
 
     bskyBtn.addEventListener("click", function() {
       openSNS("https://bsky.app");
-
       bskyBtn.disabled = true;
       fbBtn.disabled = false;
     });
 
     fbBtn.addEventListener("click", function() {
       openSNS("https://www.facebook.com/");
-
       fbBtn.disabled = true;
     });
   })();
-  </script>
+</script>
+
 </body>
 </html>
