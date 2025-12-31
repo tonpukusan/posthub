@@ -79,11 +79,6 @@
       border-color: #1d9bf0;
     }
 
-    button:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
     button:hover:not(:disabled) {
       filter: brightness(1.02);
     }
@@ -96,25 +91,22 @@
     <textarea id="text" placeholder="投稿文を入力"></textarea>
 
     <div class="btn-column">
-      <button id="xBtn" class="primary">① X に投稿</button>
-      <button id="threadsBtn" disabled>② Threads 新規投稿</button>
-      <button id="bskyBtn" disabled>③ Bluesky 新規投稿</button>
-      <button id="fbBtn" disabled>④ Facebook ページ</button>
+      <button id="postBtn" class="primary">投稿</button>
       <button id="closeAllBtn" style="background:#ff4d4d;color:white;">全SNSウインドウを閉じる</button>
     </div>
   </div>
 
 <script>
 (function() {
+
+  // 投稿ハブは常に同じウインドウで再利用
   window.name = "MULTI_SNS_POST_HUB";
 
   const textarea = document.getElementById("text");
-  const xBtn = document.getElementById("xBtn");
-  const threadsBtn = document.getElementById("threadsBtn");
-  const bskyBtn = document.getElementById("bskyBtn");
-  const fbBtn = document.getElementById("fbBtn");
+  const postBtn = document.getElementById("postBtn");
   const closeAllBtn = document.getElementById("closeAllBtn");
 
+  // URL ?text= を読み取る
   const params = new URLSearchParams(window.location.search);
   const initialText = params.get("text") || "";
   if (initialText && textarea) {
@@ -146,9 +138,59 @@
     return Promise.resolve();
   }
 
-  // ★ ポップアップブロック回避：クリック起点で全SNSウインドウを空で開く
+  // ★ ポップアップブロック回避：クリック起点で空ウインドウを全部開く
   function openAllWindowsFirst() {
-    winX = window.open("", "SNS_X", "width=500,height=800");
-    winThreads = window.open("", "SNS_THREADS", "width=500,height=800");
-    winBsky = window.open("", "SNS_BSKY", "width=500,height=800");
-    winFb = window.open("", "SNS_FB", "width=500,height=800");
+    winX = window.open("about:blank", "SNS_X", "width=500,height=800");
+    winThreads = window.open("about:blank", "SNS_THREADS", "width=500,height=800");
+    winBsky = window.open("about:blank", "SNS_BSKY", "width=500,height=800");
+    winFb = window.open("about:blank", "SNS_FB", "width=500,height=800");
+  }
+
+  // ★ 投稿 → X → Threads → Bluesky → Facebook を自動連続で開く
+  postBtn.addEventListener("click", function() {
+    const t = textarea.value;
+
+    // クリック起点で空ウインドウを開く（重要）
+    openAllWindowsFirst();
+
+    copyToClipboard(t).finally(() => {
+
+      // ① X
+      winX.location.href = "https://twitter.com/intent/tweet?text=" + encodeURIComponent(t);
+
+      // ② Threads
+      setTimeout(() => {
+        winThreads.location.href = "https://www.threads.net/intent/post";
+      }, 1200);
+
+      // ③ Bluesky
+      setTimeout(() => {
+        winBsky.location.href = "https://bsky.app";
+      }, 2400);
+
+      // ④ Facebook
+      setTimeout(() => {
+        winFb.location.href = "https://www.facebook.com/";
+      }, 3600);
+    });
+  });
+
+  // ★ 全SNSウインドウを閉じる
+  closeAllBtn.addEventListener("click", function() {
+    [winX, winThreads, winBsky, winFb].forEach(w => {
+      if (w && !w.closed) w.close();
+    });
+  });
+
+  // ★ 投稿ハブが閉じられたら SNS も全部閉じる
+  window.addEventListener("beforeunload", function() {
+    [winX, winThreads, winBsky, winFb].forEach(w => {
+      if (w && !w.closed) w.close();
+    });
+  });
+
+})();
+</script>
+
+</body>
+</html>
