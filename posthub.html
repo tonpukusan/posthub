@@ -104,7 +104,7 @@
     </div>
   </div>
 
-  <script>
+<script>
 (function() {
   window.name = "MULTI_SNS_POST_HUB";
 
@@ -125,21 +125,11 @@
     }, 50);
   }
 
-  // SNSごとに唯一のウインドウを保持
+  // SNSごとに唯一のウインドウ
   let winX = null;
   let winThreads = null;
   let winBsky = null;
   let winFb = null;
-
-  function openUnique(winRef, url, name) {
-    if (!winRef || winRef.closed) {
-      winRef = window.open(url, name, "width=500,height=800");
-    } else {
-      winRef.location.href = url;
-      winRef.focus();
-    }
-    return winRef;
-  }
 
   function copyToClipboard(text) {
     if (navigator.clipboard) {
@@ -156,71 +146,9 @@
     return Promise.resolve();
   }
 
-  // ★ X → Threads → Bluesky → Facebook を自動連続で開く
-  xBtn.addEventListener("click", function() {
-    const t = textarea.value;
-    copyToClipboard(t).finally(() => {
-      // ① X
-      winX = openUnique(winX, "https://twitter.com/intent/tweet?text=" + encodeURIComponent(t), "SNS_X");
-      xBtn.disabled = true;
-      threadsBtn.disabled = false;
-
-      // ② Threads
-      setTimeout(() => {
-        winThreads = openUnique(winThreads, "https://www.threads.net/intent/post", "SNS_THREADS");
-        threadsBtn.disabled = true;
-        bskyBtn.disabled = false;
-      }, 1200);
-
-      // ③ Bluesky
-      setTimeout(() => {
-        winBsky = openUnique(winBsky, "https://bsky.app", "SNS_BSKY");
-        bskyBtn.disabled = true;
-        fbBtn.disabled = false;
-      }, 2400);
-
-      // ④ Facebook
-      setTimeout(() => {
-        winFb = openUnique(winFb, "https://www.facebook.com/", "SNS_FB");
-        fbBtn.disabled = true;
-      }, 3600);
-    });
-  });
-
-  // 手動ボタンも残す（必要なら）
-  threadsBtn.addEventListener("click", function() {
-    winThreads = openUnique(winThreads, "https://www.threads.net/intent/post", "SNS_THREADS");
-    threadsBtn.disabled = true;
-    bskyBtn.disabled = false;
-  });
-
-  bskyBtn.addEventListener("click", function() {
-    winBsky = openUnique(winBsky, "https://bsky.app", "SNS_BSKY");
-    bskyBtn.disabled = true;
-    fbBtn.disabled = false;
-  });
-
-  fbBtn.addEventListener("click", function() {
-    winFb = openUnique(winFb, "https://www.facebook.com/", "SNS_FB");
-    fbBtn.disabled = true;
-  });
-
-  // ★ 全SNSウインドウを閉じる
-  closeAllBtn.addEventListener("click", function() {
-    [winX, winThreads, winBsky, winFb].forEach(w => {
-      if (w && !w.closed) w.close();
-    });
-  });
-
-  // ★ 投稿ハブが閉じられたら SNS も全部閉じる
-  window.addEventListener("beforeunload", function() {
-    [winX, winThreads, winBsky, winFb].forEach(w => {
-      if (w && !w.closed) w.close();
-    });
-  });
-
-})();
-  </script>
-
-</body>
-</html>
+  // ★ ポップアップブロック回避：クリック起点で全SNSウインドウを空で開く
+  function openAllWindowsFirst() {
+    winX = window.open("", "SNS_X", "width=500,height=800");
+    winThreads = window.open("", "SNS_THREADS", "width=500,height=800");
+    winBsky = window.open("", "SNS_BSKY", "width=500,height=800");
+    winFb = window.open("", "SNS_FB", "width=500,height=800");
