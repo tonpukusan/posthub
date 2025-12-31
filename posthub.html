@@ -117,7 +117,7 @@
     }, 50);
   }
 
-  // SNSごとに唯一のウインドウ
+  // SNSウインドウ
   let winX = null;
   let winThreads = null;
   let winBsky = null;
@@ -138,68 +138,79 @@
     return Promise.resolve();
   }
 
-  // SNSウインドウを投稿ハブの右側に自動配置
-  function positionSNSWindow(win, offsetY = 0) {
+  // SNSウインドウを横一列に配置（幅350px）
+  function positionSNSWindow(win, index) {
     if (!win || win.closed) return;
-    const x = window.screenX + window.outerWidth + 10;
-    const y = window.screenY + offsetY;
+    const x = window.screenX + window.outerWidth + 10 + (index * 360);
+    const y = window.screenY;
     win.moveTo(x, y);
+    win.resizeTo(350, 800);
     win.focus();
   }
 
-  // 空ウインドウを順番に開く（ポップアップブロック回避）
-  function openAllWindowsFirst(callback) {
-    winX = window.open("about:blank", "SNS_X", "width=500,height=800");
-    positionSNSWindow(winX, 0);
+  // SNS_BASE 内で実行されるコード（4枚のウインドウを開く）
+  const baseScript = `
+    (function() {
+      const winX = window.open("about:blank", "SNS_X", "width=350,height=800");
+      const winThreads = window.open("about:blank", "SNS_THREADS", "width=350,height=800");
+      const winBsky = window.open("about:blank", "SNS_BSKY", "width=350,height=800");
+      const winFb = window.open("about:blank", "SNS_FB", "width=350,height=800");
 
-    setTimeout(() => {
-      winThreads = window.open("about:blank", "SNS_THREADS", "width=500,height=800");
-      positionSNSWindow(winThreads, 50);
-    }, 50);
+      window.opener.postMessage({ 
+        type: "SNS_WINDOWS_READY" 
+      }, "*");
 
-    setTimeout(() => {
-      winBsky = window.open("about:blank", "SNS_BSKY", "width=500,height=800");
-      positionSNSWindow(winBsky, 100);
-    }, 100);
+      window.close();
+    })();
+  `;
 
-    setTimeout(() => {
-      winFb = window.open("about:blank", "SNS_FB", "width=500,height=800");
-      positionSNSWindow(winFb, 150);
-      if (callback) callback();
-    }, 150);
-  }
-
-  // 投稿 → X → Threads → Bluesky → Facebook を自動連続で開く
+  // 投稿ボタン
   postBtn.addEventListener("click", function() {
     const t = textarea.value;
 
-    openAllWindowsFirst(() => {
-      copyToClipboard(t).finally(() => {
+    // SNS_BASE を開く（1クリックで許可される唯一の window.open）
+    const base = window.open("about:blank", "SNS_BASE", "width=10,height=10");
+    base.document.write("<script>" + baseScript + "<\/script>");
 
-        // ① X
-        winX.location.href = "https://twitter.com/intent/tweet?text=" + encodeURIComponent(t);
+    // SNSウインドウが開いたら URL を流し込む
+    window.addEventListener("message", function(e) {
+      if (e.data.type === "SNS_WINDOWS_READY") {
+
+        winX = window.open("", "SNS_X");
+        winThreads = window.open("", "SNS_THREADS");
+        winBsky = window.open("", "SNS_BSKY");
+        winFb = window.open("", "SNS_FB");
+
+        // 配置
         positionSNSWindow(winX, 0);
+        positionSNSWindow(winThreads, 1);
+        positionSNSWindow(winBsky, 2);
+        positionSNSWindow(winFb, 3);
 
-        // ② Threads
-        setTimeout(() => {
-          winThreads.location.href = "https://www.threads.net/intent/post";
-          positionSNSWindow(winThreads, 50);
-        }, 1200);
+        // クリップボードコピー
+        copyToClipboard(t).finally(() => {
 
-        // ③ Bluesky
-        setTimeout(() => {
-          winBsky.location.href = "https://bsky.app";
-          positionSNSWindow(winBsky, 100);
-        }, 2400);
+          // ① X
+          winX.location.href = "https://twitter.com/intent/tweet?text=" + encodeURIComponent(t);
 
-        // ④ Facebook
-        setTimeout(() => {
-          winFb.location.href = "https://www.facebook.com/";
-          positionSNSWindow(winFb, 150);
-        }, 3600);
+          // ② Threads
+          setTimeout(() => {
+            winThreads.location.href = "https://www.threads.net/intent/post";
+          }, 1200);
 
-      });
-    });
+          // ③ Bluesky
+          setTimeout(() => {
+            winBsky.location.href = "https://bsky.app";
+          }, 2400);
+
+          // ④ Facebook
+          setTimeout(() => {
+            winFb.location.href = "https://www.facebook.com/";
+          }, 3600);
+
+        });
+      }
+    }, { once: true });
   });
 
   // 全SNSウインドウを閉じる
