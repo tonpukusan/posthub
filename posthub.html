@@ -138,7 +138,7 @@
     return Promise.resolve();
   }
 
-  // ★ SNSウインドウを投稿ハブの右側に自動配置
+  // SNSウインドウを投稿ハブの右側に自動配置
   function positionSNSWindow(win, offsetY = 0) {
     if (!win || win.closed) return;
     const x = window.screenX + window.outerWidth + 10;
@@ -147,7 +147,7 @@
     win.focus();
   }
 
-  // ★ ポップアップブロック回避：空ウインドウを順番に開く
+  // 空ウインドウを順番に開く（ポップアップブロック回避）
   function openAllWindowsFirst(callback) {
     winX = window.open("about:blank", "SNS_X", "width=500,height=800");
     positionSNSWindow(winX, 0);
@@ -169,7 +169,7 @@
     }, 150);
   }
 
-  // ★ 投稿 → X → Threads → Bluesky → Facebook を自動連続で開く
+  // 投稿 → X → Threads → Bluesky → Facebook を自動連続で開く
   postBtn.addEventListener("click", function() {
     const t = textarea.value;
 
@@ -188,4 +188,36 @@
 
         // ③ Bluesky
         setTimeout(() => {
-          winBsky.location.href = "https://
+          winBsky.location.href = "https://bsky.app";
+          positionSNSWindow(winBsky, 100);
+        }, 2400);
+
+        // ④ Facebook
+        setTimeout(() => {
+          winFb.location.href = "https://www.facebook.com/";
+          positionSNSWindow(winFb, 150);
+        }, 3600);
+
+      });
+    });
+  });
+
+  // 全SNSウインドウを閉じる
+  closeAllBtn.addEventListener("click", function() {
+    [winX, winThreads, winBsky, winFb].forEach(w => {
+      if (w && !w.closed) w.close();
+    });
+  });
+
+  // 投稿ハブが閉じられたら SNS も全部閉じる
+  window.addEventListener("beforeunload", function() {
+    [winX, winThreads, winBsky, winFb].forEach(w => {
+      if (w && !w.closed) w.close();
+    });
+  });
+
+})();
+</script>
+
+</body>
+</html>
