@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>マルチSNS投稿ハブ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #ffffff;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #222;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      padding: 16px;
+    }
+
+    .hub-container {
+      width: 100%;
+      max-width: 640px;
+      background: #ffffff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-size: 1.2rem;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 140px;
+      resize: vertical;
+      padding: 8px;
+      font-size: 0.95rem;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: #1d9bf0;
+      box-shadow: 0 0 0 2px rgba(29,155,240,0.15);
+    }
+
+    .btn-column {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    button {
+      padding: 10px 12px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      background: #f5f5f5;
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+
+    button.primary {
+      background: #1d9bf0;
+      color: #fff;
+      border-color: #1d9bf0;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    button:hover:not(:disabled) {
+      filter: brightness(1.02);
+    }
+  </style>
+</head>
+<body>
+  <div class="hub-container">
+    <h1>マルチSNS投稿ハブ</h1>
+
+    <textarea id="text" placeholder="投稿文を入力"></textarea>
+
+    <div class="btn-column">
+      <button id="xBtn" class="primary">① X に投稿</button>
+      <button id="threadsBtn" disabled>② Threads 新規投稿</button>
+      <button id="bskyBtn" disabled>③ Bluesky 新規投稿</button>
+      <button id="fbBtn" disabled>④ Facebook ページ</button>
+    </div>
+  </div>
+
+  <script>
+  (function() {
+    window.name = "MULTI_SNS_POST_HUB";
+
+    const textarea = document.getElementById("text");
+    const xBtn = document.getElementById("xBtn");
+    const threadsBtn = document.getElementById("threadsBtn");
+    const bskyBtn = document.getElementById("bskyBtn");
+    const fbBtn = document.getElementById("fbBtn");
+
+    let snsWindow = null;
+
+    function openSNS(url) {
+      if (!snsWindow || snsWindow.closed) {
+        snsWindow = window.open(url, "SNS_SINGLE_WINDOW");
+      } else {
+        snsWindow.location.href = url;
+        snsWindow.focus();
+      }
+    }
+
+    function copyToClipboard(text) {
+      if (navigator.clipboard) {
+        return navigator.clipboard.writeText(text);
+      }
+      const temp = document.createElement("textarea");
+      temp.value = text;
+      temp.style.position = "fixed";
+      temp.style.left = "-9999px";
+      document.body.appendChild(temp);
+      temp.select();
+      document.execCommand("copy");
+      document.body.removeChild(temp);
+      return Promise.resolve();
+    }
+
+    xBtn.addEventListener("click", function() {
+      const t = textarea.value;
+
+      copyToClipboard(t).finally(() => {
+        const url = "https://twitter.com/intent/tweet?text=" + encodeURIComponent(t);
+        openSNS(url);
+
+        xBtn.disabled = true;
+        threadsBtn.disabled = false;
+      });
+    });
+
+    threadsBtn.addEventListener("click", function() {
+      openSNS("https://www.threads.net/intent/post");
+
+      threadsBtn.disabled = true;
+      bskyBtn.disabled = false;
+    });
+
+    bskyBtn.addEventListener("click", function() {
+      openSNS("https://bsky.app");
+
+      bskyBtn.disabled = true;
+      fbBtn.disabled = false;
+    });
+
+    fbBtn.addEventListener("click", function() {
+      openSNS("https://www.facebook.com/");
+
+      fbBtn.disabled = true;
+    });
+  })();
+  </script>
+</body>
+</html>
