@@ -58,32 +58,43 @@ button {
 <script>
 (function(){
 
+  // 投稿ハブを唯一のウインドウとして再利用
+  window.name = "MULTI_SNS_POST_HUB";
+
   // URLパラメータからテキストを取得
   const params = new URLSearchParams(location.search);
   const t = params.get("text") || "";
   const textarea = document.getElementById("text");
   textarea.value = t;
 
-  // 投稿ボタン → SNSボタン表示
-  document.getElementById("showSNS").onclick = () => {
+  // 投稿ボタン → SNSボタン表示 + クリップボードコピー
+  document.getElementById("showSNS").onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(textarea.value);
+    } catch(e) {
+      console.log("Clipboard copy failed:", e);
+    }
     document.getElementById("snsButtons").style.display = "block";
   };
 
-  // 各SNSボタン（ユーザー操作扱い → window.open が許可される）
+  // 各SNSウインドウは名前付き → 最大1枚だけ開く
   document.getElementById("btnX").onclick = () => {
-    window.open("https://twitter.com/intent/tweet?text=" + encodeURIComponent(textarea.value));
+    window.open(
+      "https://twitter.com/intent/tweet?text=" + encodeURIComponent(textarea.value),
+      "SNS_X"
+    );
   };
 
   document.getElementById("btnThreads").onclick = () => {
-    window.open("https://www.threads.net/intent/post");
+    window.open("https://www.threads.net/intent/post", "SNS_THREADS");
   };
 
   document.getElementById("btnBsky").onclick = () => {
-    window.open("https://bsky.app");
+    window.open("https://bsky.app", "SNS_BSKY");
   };
 
   document.getElementById("btnFb").onclick = () => {
-    window.open("https://www.facebook.com/");
+    window.open("https://www.facebook.com/", "SNS_FB");
   };
 
 })();
