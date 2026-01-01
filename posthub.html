@@ -46,6 +46,7 @@ button {
   <textarea id="text"></textarea>
 
   <button id="showSNS">投稿</button>
+  <button id="closeAll" style="background:#ff4d4d;color:white;">すべて閉じる</button>
 
   <div id="snsButtons">
     <button class="sns-btn" id="btnX">X に投稿</button>
@@ -58,8 +59,14 @@ button {
 <script>
 (function(){
 
-  // 投稿ハブを唯一のウインドウとして再利用
+  // ハブウインドウは常に1枚
   window.name = "MULTI_SNS_POST_HUB";
+
+  // SNSタブのハンドル
+  let winX = null;
+  let winThreads = null;
+  let winBsky = null;
+  let winFb = null;
 
   // URLパラメータからテキストを取得
   const params = new URLSearchParams(location.search);
@@ -77,25 +84,40 @@ button {
     document.getElementById("snsButtons").style.display = "block";
   };
 
-  // 各SNSウインドウは名前付き → 最大1枚だけ開く
+  // SNSタブは名前付き → 最大1枚だけ開く
   document.getElementById("btnX").onclick = () => {
-    window.open(
+    winX = window.open(
       "https://twitter.com/intent/tweet?text=" + encodeURIComponent(textarea.value),
       "SNS_X"
     );
   };
 
   document.getElementById("btnThreads").onclick = () => {
-    window.open("https://www.threads.net/intent/post", "SNS_THREADS");
+    winThreads = window.open("https://www.threads.net/intent/post", "SNS_THREADS");
   };
 
   document.getElementById("btnBsky").onclick = () => {
-    window.open("https://bsky.app", "SNS_BSKY");
+    winBsky = window.open("https://bsky.app", "SNS_BSKY");
   };
 
   document.getElementById("btnFb").onclick = () => {
-    window.open("https://www.facebook.com/", "SNS_FB");
+    winFb = window.open("https://www.facebook.com/", "SNS_FB");
   };
+
+  // すべて閉じるボタン
+  document.getElementById("closeAll").onclick = () => {
+    [winX, winThreads, winBsky, winFb].forEach(w => {
+      if (w && !w.closed) w.close();
+    });
+    window.close();
+  };
+
+  // ハブが閉じられたら SNS も全部閉じる
+  window.addEventListener("beforeunload", () => {
+    [winX, winThreads, winBsky, winFb].forEach(w => {
+      if (w && !w.closed) w.close();
+    });
+  });
 
 })();
 </script>
