@@ -1,231 +1,90 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <title>マルチSNS投稿ハブ</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="UTF-8">
+<title>マルチSNS投稿ハブ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <style>
-    * { box-sizing: border-box; }
-
-    html, body {
-      margin: 0;
-      padding: 0;
-      background: #ffffff;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color: #222;
-    }
-
-    body {
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      min-height: 100vh;
-      padding: 16px;
-    }
-
-    .hub-container {
-      width: 100%;
-      max-width: 640px;
-      background: #ffffff;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      padding: 16px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.06);
-    }
-
-    h1 {
-      margin: 0 0 12px;
-      font-size: 1.2rem;
-      font-weight: 600;
-      text-align: center;
-    }
-
-    textarea {
-      width: 100%;
-      min-height: 140px;
-      resize: vertical;
-      padding: 8px;
-      font-size: 0.95rem;
-      border-radius: 4px;
-      border: 1px solid #ccc;
-    }
-
-    textarea:focus {
-      outline: none;
-      border-color: #1d9bf0;
-      box-shadow: 0 0 0 2px rgba(29,155,240,0.15);
-    }
-
-    .btn-column {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-top: 16px;
-    }
-
-    button {
-      padding: 10px 12px;
-      border-radius: 4px;
-      border: 1px solid #ccc;
-      background: #f5f5f5;
-      font-size: 0.95rem;
-      cursor: pointer;
-    }
-
-    button.primary {
-      background: #1d9bf0;
-      color: #fff;
-      border-color: #1d9bf0;
-    }
-
-    button:hover:not(:disabled) {
-      filter: brightness(1.02);
-    }
-  </style>
+<style>
+body {
+  font-family: system-ui, sans-serif;
+  margin: 0;
+  padding: 20px;
+  background: #fff;
+}
+.container {
+  max-width: 600px;
+  margin: auto;
+}
+textarea {
+  width: 100%;
+  height: 150px;
+  padding: 10px;
+  font-size: 1rem;
+}
+button {
+  padding: 10px 14px;
+  margin: 6px 0;
+  font-size: 1rem;
+  cursor: pointer;
+}
+#snsButtons {
+  margin-top: 20px;
+  display: none;
+}
+.sns-btn {
+  width: 100%;
+  margin-bottom: 10px;
+}
+</style>
 </head>
+
 <body>
-  <div class="hub-container">
-    <h1>マルチSNS投稿ハブ</h1>
+<div class="container">
+  <h2>マルチSNS投稿ハブ</h2>
 
-    <textarea id="text" placeholder="投稿文を入力"></textarea>
+  <textarea id="text"></textarea>
 
-    <div class="btn-column">
-      <button id="postBtn" class="primary">投稿</button>
-      <button id="closeAllBtn" style="background:#ff4d4d;color:white;">全SNSウインドウを閉じる</button>
-    </div>
+  <button id="showSNS">投稿</button>
+
+  <div id="snsButtons">
+    <button class="sns-btn" id="btnX">X に投稿</button>
+    <button class="sns-btn" id="btnThreads">Threads に投稿</button>
+    <button class="sns-btn" id="btnBsky">Bluesky に投稿</button>
+    <button class="sns-btn" id="btnFb">Facebook に投稿</button>
   </div>
+</div>
 
 <script>
-(function() {
+(function(){
 
-  // 投稿ハブは常に同じウインドウで再利用
-  window.name = "MULTI_SNS_POST_HUB";
-
+  // URLパラメータからテキストを取得
+  const params = new URLSearchParams(location.search);
+  const t = params.get("text") || "";
   const textarea = document.getElementById("text");
-  const postBtn = document.getElementById("postBtn");
-  const closeAllBtn = document.getElementById("closeAllBtn");
+  textarea.value = t;
 
-  // URL ?text= を読み取る
-  const params = new URLSearchParams(window.location.search);
-  const initialText = params.get("text") || "";
-  if (initialText && textarea) {
-    textarea.value = initialText;
-    setTimeout(() => {
-      textarea.focus();
-      textarea.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 50);
-  }
+  // 投稿ボタン → SNSボタン表示
+  document.getElementById("showSNS").onclick = () => {
+    document.getElementById("snsButtons").style.display = "block";
+  };
 
-  // SNSウインドウ
-  let winX = null;
-  let winThreads = null;
-  let winBsky = null;
-  let winFb = null;
+  // 各SNSボタン（ユーザー操作扱い → window.open が許可される）
+  document.getElementById("btnX").onclick = () => {
+    window.open("https://twitter.com/intent/tweet?text=" + encodeURIComponent(textarea.value));
+  };
 
-  function copyToClipboard(text) {
-    if (navigator.clipboard) {
-      return navigator.clipboard.writeText(text);
-    }
-    const temp = document.createElement("textarea");
-    temp.value = text;
-    temp.style.position = "fixed";
-    temp.style.left = "-9999px";
-    document.body.appendChild(temp);
-    temp.select();
-    document.execCommand("copy");
-    document.body.removeChild(temp);
-    return Promise.resolve();
-  }
+  document.getElementById("btnThreads").onclick = () => {
+    window.open("https://www.threads.net/intent/post");
+  };
 
-  // SNSウインドウを横一列に配置（幅350px）
-  function positionSNSWindow(win, index) {
-    if (!win || win.closed) return;
-    const x = window.screenX + window.outerWidth + 10 + (index * 360);
-    const y = window.screenY;
-    win.moveTo(x, y);
-    win.resizeTo(350, 800);
-    win.focus();
-  }
+  document.getElementById("btnBsky").onclick = () => {
+    window.open("https://bsky.app");
+  };
 
-  // SNS_BASE 内で実行されるコード（4枚のウインドウを開く）
-  const baseScript = `
-    (function() {
-      const winX = window.open("about:blank", "SNS_X", "width=350,height=800");
-      const winThreads = window.open("about:blank", "SNS_THREADS", "width=350,height=800");
-      const winBsky = window.open("about:blank", "SNS_BSKY", "width=350,height=800");
-      const winFb = window.open("about:blank", "SNS_FB", "width=350,height=800");
-
-      window.opener.postMessage({ 
-        type: "SNS_WINDOWS_READY" 
-      }, "*");
-
-      window.close();
-    })();
-  `;
-
-  // 投稿ボタン
-  postBtn.addEventListener("click", function() {
-    const t = textarea.value;
-
-    // SNS_BASE を開く（1クリックで許可される唯一の window.open）
-    const base = window.open("about:blank", "SNS_BASE", "width=10,height=10");
-    base.document.write("<script>" + baseScript + "<\/script>");
-
-    // SNSウインドウが開いたら URL を流し込む
-    window.addEventListener("message", function(e) {
-      if (e.data.type === "SNS_WINDOWS_READY") {
-
-        winX = window.open("", "SNS_X");
-        winThreads = window.open("", "SNS_THREADS");
-        winBsky = window.open("", "SNS_BSKY");
-        winFb = window.open("", "SNS_FB");
-
-        // 配置
-        positionSNSWindow(winX, 0);
-        positionSNSWindow(winThreads, 1);
-        positionSNSWindow(winBsky, 2);
-        positionSNSWindow(winFb, 3);
-
-        // クリップボードコピー
-        copyToClipboard(t).finally(() => {
-
-          // ① X
-          winX.location.href = "https://twitter.com/intent/tweet?text=" + encodeURIComponent(t);
-
-          // ② Threads
-          setTimeout(() => {
-            winThreads.location.href = "https://www.threads.net/intent/post";
-          }, 1200);
-
-          // ③ Bluesky
-          setTimeout(() => {
-            winBsky.location.href = "https://bsky.app";
-          }, 2400);
-
-          // ④ Facebook
-          setTimeout(() => {
-            winFb.location.href = "https://www.facebook.com/";
-          }, 3600);
-
-        });
-      }
-    }, { once: true });
-  });
-
-  // 全SNSウインドウを閉じる
-  closeAllBtn.addEventListener("click", function() {
-    [winX, winThreads, winBsky, winFb].forEach(w => {
-      if (w && !w.closed) w.close();
-    });
-  });
-
-  // 投稿ハブが閉じられたら SNS も全部閉じる
-  window.addEventListener("beforeunload", function() {
-    [winX, winThreads, winBsky, winFb].forEach(w => {
-      if (w && !w.closed) w.close();
-    });
-  });
+  document.getElementById("btnFb").onclick = () => {
+    window.open("https://www.facebook.com/");
+  };
 
 })();
 </script>
