@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>マルチSNS投稿ハブ</title>
+<title>マルチSNS投稿ハブ（スマホ対応・Amazon強化版）</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
@@ -16,24 +16,27 @@ body {
   max-width: 600px;
   margin: auto;
 }
-textarea {
+textarea, input[type="text"] {
   width: 100%;
-  height: 150px;
   padding: 10px;
   font-size: 1rem;
+  margin-bottom: 10px;
+}
+textarea {
+  height: 150px;
 }
 button {
-  padding: 10px 14px;
+  padding: 12px 16px;
   margin: 6px 0;
-  font-size: 1rem;
+  font-size: 1.1rem;
   cursor: pointer;
+  width: 100%;
 }
 #snsButtons {
   margin-top: 20px;
   display: none;
 }
 .sns-btn {
-  width: 100%;
   margin-bottom: 10px;
 }
 </style>
@@ -42,6 +45,10 @@ button {
 <body>
 <div class="container">
   <h2>マルチSNS投稿ハブ</h2>
+
+  <input type="text" id="urlInput" placeholder="商品URLを貼り付け（Amazon/Rakuten対応）">
+
+  <button id="generate">投稿文を生成</button>
 
   <textarea id="text"></textarea>
 
@@ -59,32 +66,102 @@ button {
 <script>
 (function(){
 
-  // ハブウインドウは常に1枚
   window.name = "MULTI_SNS_POST_HUB";
 
-  // SNSタブのハンドル
   let winX = null;
   let winThreads = null;
   let winBsky = null;
   let winFb = null;
 
-  // URLパラメータからテキストを取得
+  const textarea = document.getElementById("text");
+  const urlInput = document.getElementById("urlInput");
+
   const params = new URLSearchParams(location.search);
   const t = params.get("text") || "";
-  const textarea = document.getElementById("text");
-  textarea.value = t;
+  if (t) textarea.value = t;
 
-  // 投稿ボタン → SNSボタン表示 + クリップボードコピー
+  /* ------------------------------
+     Amazon 強化ロジック
+     ------------------------------ */
+  function generateAmazonLink(url) {
+    if (!url.includes("amazon.co.jp")) return null;
+
+    // ASIN 抽出（PC/スマホ/アプリ共有URL対応）
+    let asin = null;
+    let m1 = url.match(/\/dp\/([A-Z0-9]{10})/i);
+    let m2 = url.match(/\/gp\/product\/([A-Z0-9]{10})/i);
+    let m3 = url.match(/\/product\/([A-Z0-9]{10})/i);
+
+    if (m1) asin = m1[1];
+    if (m2) asin = m2[1];
+    if (m3) asin = m3[1];
+
+    // ASIN が取れた → 商品リンク
+    if (asin) {
+      return "https://www.amazon.co.jp/dp/" + asin + "?tag=yusatosh-22";
+    }
+
+    // ASIN が取れない → URL に tag を付ける
+    if (url.includes("?")) {
+      return url + "&tag=yusatosh-22";
+    } else {
+      return url + "?tag=yusatosh-22";
+    }
+  }
+
+  /* ------------------------------
+     楽天ロジック（汎用）
+     ------------------------------ */
+  function generateRakutenLink(url) {
+    if (!/rakuten\.(co\.jp|ne\.jp)/.test(url)) return null;
+
+    let base = "https://hb.afl.rakuten.co.jp/hgc/15844848.ec827d24.15844849.84443345/";
+    let link = base + "?pc=" + encodeURIComponent(url) + "&link_type=hybrid_url";
+    return link;
+  }
+
+  /* ------------------------------
+     URL → 投稿文生成（汎用性維持）
+     ------------------------------ */
+  function generateFromURL(url) {
+    if (!url) return "";
+
+    // Amazon
+    let amazon = generateAmazonLink(url);
+    if (amazon) {
+      return "#密林偵察 #Amazonセール情報 #AD\n" + amazon;
+    }
+
+    // 楽天
+    let rakuten = generateRakutenLink(url);
+    if (rakuten) {
+      return "#楽天偵察 #セール情報 #AD\n" + rakuten;
+    }
+
+    // その他（ブログ記事など）
+    return url;
+  }
+
+  /* ------------------------------
+     投稿文生成ボタン
+     ------------------------------ */
+  document.getElementById("generate").onclick = () => {
+    textarea.value = generateFromURL(urlInput.value.trim());
+  };
+
+  /* ------------------------------
+     投稿ボタン → クリップボードコピー
+     ------------------------------ */
   document.getElementById("showSNS").onclick = async () => {
     try {
       await navigator.clipboard.writeText(textarea.value);
-    } catch(e) {
-      console.log("Clipboard copy failed:", e);
-    }
+    } catch(e) {}
     document.getElementById("snsButtons").style.display = "block";
   };
 
-  // SNSタブは名前付き → 最大1枚だけ開く
+  /* ------------------------------
+     SNSボタン（最大1枚）
+     ------------------------------ */
   document.getElementById("btnX").onclick = () => {
     winX = window.open(
       "https://twitter.com/intent/tweet?text=" + encodeURIComponent(textarea.value),
@@ -104,7 +181,9 @@ button {
     winFb = window.open("https://www.facebook.com/", "SNS_FB");
   };
 
-  // すべて閉じるボタン
+  /* ------------------------------
+     すべて閉じる
+     ------------------------------ */
   document.getElementById("closeAll").onclick = () => {
     [winX, winThreads, winBsky, winFb].forEach(w => {
       if (w && !w.closed) w.close();
@@ -112,7 +191,6 @@ button {
     window.close();
   };
 
-  // ハブが閉じられたら SNS も全部閉じる
   window.addEventListener("beforeunload", () => {
     [winX, winThreads, winBsky, winFb].forEach(w => {
       if (w && !w.closed) w.close();
