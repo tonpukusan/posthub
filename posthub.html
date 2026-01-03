@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>マルチSNS投稿ハブ（スマホ対応・Amazon強化版）</title>
+<title>マルチSNS投稿ハブ（最適化版）</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
@@ -81,6 +81,21 @@ button {
   if (t) textarea.value = t;
 
   /* ------------------------------
+     Amazonタイトル整形（ノイズ除去）
+     ------------------------------ */
+  function cleanAmazonTitle(title) {
+    if (!title) return "";
+
+    // ① 先頭の「Amazon.co.jp: 」を除去
+    title = title.replace(/^Amazon\.co\.jp:\s*/i, "");
+
+    // ② 末尾の「 : ○○」を除去（カテゴリ名）
+    title = title.replace(/\s*:\s*[^:]+$/, "");
+
+    return title.trim();
+  }
+
+  /* ------------------------------
      Amazon 強化ロジック
      ------------------------------ */
   function generateAmazonLink(url) {
@@ -123,30 +138,35 @@ button {
   /* ------------------------------
      URL → 投稿文生成（汎用性維持）
      ------------------------------ */
-  function generateFromURL(url) {
+  function generateFromURL(url, rawTitle) {
     if (!url) return "";
 
     // Amazon
     let amazon = generateAmazonLink(url);
     if (amazon) {
-      return "#密林偵察 #Amazonセール情報 #AD\n" + amazon;
+      let title = cleanAmazonTitle(rawTitle);
+      return "#密林偵察 #Amazonセール情報 #AD\n" + title + "\n" + amazon;
     }
 
     // 楽天
     let rakuten = generateRakutenLink(url);
     if (rakuten) {
-      return "#楽天偵察 #セール情報 #AD\n" + rakuten;
+      return "#楽天偵察 #セール情報 #AD\n" + rawTitle + "\n" + rakuten;
     }
 
     // その他（ブログ記事など）
-    return url;
+    return rawTitle + "\n" + url;
   }
 
   /* ------------------------------
      投稿文生成ボタン
      ------------------------------ */
   document.getElementById("generate").onclick = () => {
-    textarea.value = generateFromURL(urlInput.value.trim());
+    let raw = textarea.value.trim();
+    let lines = raw.split("\n");
+    let title = lines[0] || "";
+    let url = lines[1] || "";
+    textarea.value = generateFromURL(url, title);
   };
 
   /* ------------------------------
