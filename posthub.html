@@ -2,58 +2,65 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>マルチSNS投稿ハブ（最適化版）</title>
+<title>マルチSNS投稿ハブ（PC/スマホ完全版）</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-
 <style>
-body {
-  font-family: system-ui, sans-serif;
-  margin: 0;
-  padding: 20px;
-  background: #fff;
+body{
+  font-family:system-ui,sans-serif;
+  margin:0;
+  padding:20px;
+  background:#fff;
 }
-.container {
-  max-width: 600px;
-  margin: auto;
+.container{
+  max-width:600px;
+  margin:auto;
 }
-textarea, input[type="text"] {
-  width: 100%;
-  padding: 10px;
-  font-size: 1rem;
-  margin-bottom: 10px;
+textarea,input[type="text"]{
+  width:100%;
+  padding:10px;
+  font-size:1rem;
+  margin-bottom:10px;
 }
-textarea {
-  height: 150px;
+textarea{
+  height:150px;
 }
-button {
-  padding: 12px 16px;
-  margin: 6px 0;
-  font-size: 1.1rem;
-  cursor: pointer;
-  width: 100%;
+button{
+  padding:12px 16px;
+  margin:6px 0;
+  font-size:1.1rem;
+  cursor:pointer;
+  width:100%;
 }
-#snsButtons {
-  margin-top: 20px;
-  display: none;
+#snsButtons{
+  margin-top:20px;
+  display:none;
 }
-.sns-btn {
-  margin-bottom: 10px;
+.sns-btn{
+  margin-bottom:10px;
+}
+.note{
+  font-size:.85rem;
+  color:#555;
+  margin-bottom:8px;
 }
 </style>
 </head>
-
 <body>
 <div class="container">
   <h2>マルチSNS投稿ハブ</h2>
 
-  <input type="text" id="urlInput" placeholder="商品URLを貼り付け（Amazon/Rakuten対応）">
+  <div class="note">
+    PC：ブックマークレットから開くと自動でタイトル＋URLが入ります。<br>
+    スマホ：ここに商品URLを貼り付けて「投稿文を生成」を押してください。
+  </div>
+  <input type="text" id="urlInput" placeholder="スマホではここに商品URLを貼り付け（Amazon/Rakuten対応）">
 
   <button id="generate">投稿文を生成</button>
 
-  <textarea id="text"></textarea>
+  <textarea id="text" placeholder="PCではブックマークレットからタイトル＋URLが入ります。スマホではここに任意で紹介文を書き足してもOKです。"></textarea>
 
   <button id="showSNS">投稿</button>
-  <button id="closeAll" style="background:#ff4d4d;color:white;">すべて閉じる</button>
+  <button id="closeAll" style="background:#ff4d4d;color:#fff;">すべて閉じる</button>
 
   <div id="snsButtons">
     <button class="sns-btn" id="btnX">X に投稿</button>
@@ -65,160 +72,151 @@ button {
 
 <script>
 (function(){
+  window.name="MULTI_SNS_POST_HUB";
 
-  window.name = "MULTI_SNS_POST_HUB";
+  let winX=null,winThreads=null,winBsky=null,winFb=null;
+  const textarea=document.getElementById("text");
+  const urlInput=document.getElementById("urlInput");
 
-  let winX = null;
-  let winThreads = null;
-  let winBsky = null;
-  let winFb = null;
+  // ブックマークレットからの text パラメータ（タイトル＋URL）を反映
+  const params=new URLSearchParams(location.search);
+  const t=params.get("text")||"";
+  if(t) textarea.value=t;
 
-  const textarea = document.getElementById("text");
-  const urlInput = document.getElementById("urlInput");
-
-  const params = new URLSearchParams(location.search);
-  const t = params.get("text") || "";
-  if (t) textarea.value = t;
-
-  /* ------------------------------
-     Amazonタイトル整形（ノイズ除去）
-     ------------------------------ */
-  function cleanAmazonTitle(title) {
-    if (!title) return "";
-
-    // ① 先頭の「Amazon.co.jp: 」を除去
-    title = title.replace(/^Amazon\.co\.jp:\s*/i, "");
-
-    // ② 末尾の「 : ○○」を除去（カテゴリ名）
-    title = title.replace(/\s*:\s*[^:]+$/, "");
-
+  /* Amazonタイトル整形（ノイズ除去） */
+  function cleanAmazonTitle(title){
+    if(!title) return "";
+    // 先頭の「Amazon.co.jp: 」除去
+    title=title.replace(/^Amazon\.co\.jp:\s*/i,"");
+    // 末尾の「 : ○○」（カテゴリ）除去
+    title=title.replace(/\s*:\s*[^:]+$/,"");
     return title.trim();
   }
 
-  /* ------------------------------
-     Amazon 強化ロジック
-     ------------------------------ */
-  function generateAmazonLink(url) {
-    if (!url.includes("amazon.co.jp")) return null;
+  /* Amazon アフィリンク生成（ASIN強化版） */
+  function generateAmazonLink(url){
+    if(!url.includes("amazon.co.jp")) return null;
 
-    // ASIN 抽出（PC/スマホ/アプリ共有URL対応）
-    let asin = null;
-    let m1 = url.match(/\/dp\/([A-Z0-9]{10})/i);
-    let m2 = url.match(/\/gp\/product\/([A-Z0-9]{10})/i);
-    let m3 = url.match(/\/product\/([A-Z0-9]{10})/i);
+    let asin=null;
+    let m1=url.match(/\/dp\/([A-Z0-9]{10})/i);
+    let m2=url.match(/\/gp\/product\/([A-Z0-9]{10})/i);
+    let m3=url.match(/\/product\/([A-Z0-9]{10})/i);
+    if(m1) asin=m1[1];
+    if(m2) asin=m2[1];
+    if(m3) asin=m3[1];
 
-    if (m1) asin = m1[1];
-    if (m2) asin = m2[1];
-    if (m3) asin = m3[1];
-
-    // ASIN が取れた → 商品リンク
-    if (asin) {
-      return "https://www.amazon.co.jp/dp/" + asin + "?tag=yusatosh-22";
+    if(asin){
+      return "https://www.amazon.co.jp/dp/"+asin+"?tag=yusatosh-22";
     }
-
-    // ASIN が取れない → URL に tag を付ける
-    if (url.includes("?")) {
-      return url + "&tag=yusatosh-22";
-    } else {
-      return url + "?tag=yusatosh-22";
-    }
+    return url+(url.includes("?")?"&":"?")+"tag=yusatosh-22";
   }
 
-  /* ------------------------------
-     楽天ロジック（汎用）
-     ------------------------------ */
-  function generateRakutenLink(url) {
-    if (!/rakuten\.(co\.jp|ne\.jp)/.test(url)) return null;
-
-    let base = "https://hb.afl.rakuten.co.jp/hgc/15844848.ec827d24.15844849.84443345/";
-    let link = base + "?pc=" + encodeURIComponent(url) + "&link_type=hybrid_url";
-    return link;
+  /* 楽天 アフィリンク生成（hybrid_url） */
+  function generateRakutenLink(url){
+    if(!/rakuten\.(co\.jp|ne\.jp)/.test(url)) return null;
+    let base="https://hb.afl.rakuten.co.jp/hgc/15844848.ec827d24.15844849.84443345/";
+    return base+"?pc="+encodeURIComponent(url)+"&link_type=hybrid_url";
   }
 
-  /* ------------------------------
-     URL → 投稿文生成（汎用性維持）
-     ------------------------------ */
-  function generateFromURL(url, rawTitle) {
-    if (!url) return "";
+  /* URL → 投稿文生成 */
+  function generateFromURL(url,rawTitle){
+    if(!url) return "";
 
     // Amazon
-    let amazon = generateAmazonLink(url);
-    if (amazon) {
-      let title = cleanAmazonTitle(rawTitle);
-      return "#密林偵察 #Amazonセール情報 #AD\n" + title + "\n" + amazon;
+    let amazon=generateAmazonLink(url);
+    if(amazon){
+      let title=cleanAmazonTitle(rawTitle);
+      // タイトルが空なら1行減らす（スマホでタイトルなし運用でも破綻しないように）
+      if(title){
+        return "#密林偵察 #Amazonセール情報 #AD\n"+title+"\n"+amazon;
+      }else{
+        return "#密林偵察 #Amazonセール情報 #AD\n"+amazon;
+      }
     }
 
     // 楽天
-    let rakuten = generateRakutenLink(url);
-    if (rakuten) {
-      return "#楽天偵察 #セール情報 #AD\n" + rawTitle + "\n" + rakuten;
+    let rakuten=generateRakutenLink(url);
+    if(rakuten){
+      if(rawTitle){
+        return "#楽天偵察 #セール情報 #AD\n"+rawTitle+"\n"+rakuten;
+      }else{
+        return "#楽天偵察 #セール情報 #AD\n"+rakuten;
+      }
     }
 
     // その他（ブログ記事など）
-    return rawTitle + "\n" + url;
+    if(rawTitle){
+      return rawTitle+"\n"+url;
+    }else{
+      return url;
+    }
   }
 
-  /* ------------------------------
-     投稿文生成ボタン
-     ------------------------------ */
-  document.getElementById("generate").onclick = () => {
-    let raw = textarea.value.trim();
-    let lines = raw.split("\n");
-    let title = lines[0] || "";
-    let url = lines[1] || "";
-    textarea.value = generateFromURL(url, title);
+  /* 投稿文生成ボタン（PC＋スマホ両対応） */
+  document.getElementById("generate").onclick=()=>{
+    let raw=textarea.value.trim();
+    let title="";
+    let url="";
+
+    if(raw){
+      let lines=raw.split("\n");
+      if(lines.length>=2){
+        // PC：ブックマークレットからの「タイトル＋URL」形式
+        title=lines[0].trim();
+        url=lines[1].trim();
+      }
+    }
+
+    // URLがまだ空なら、スマホ想定で URL欄から取得
+    if(!url){
+      url=urlInput.value.trim();
+    }
+
+    // どちらも空なら何もしない
+    if(!url){
+      return;
+    }
+
+    textarea.value=generateFromURL(url,title);
   };
 
-  /* ------------------------------
-     投稿ボタン → クリップボードコピー
-     ------------------------------ */
-  document.getElementById("showSNS").onclick = async () => {
-    try {
+  /* 投稿ボタン → クリップボードコピー＋SNSボタン表示 */
+  document.getElementById("showSNS").onclick=async()=>{
+    try{
       await navigator.clipboard.writeText(textarea.value);
-    } catch(e) {}
-    document.getElementById("snsButtons").style.display = "block";
+    }catch(e){}
+    document.getElementById("snsButtons").style.display="block";
   };
 
-  /* ------------------------------
-     SNSボタン（最大1枚）
-     ------------------------------ */
-  document.getElementById("btnX").onclick = () => {
-    winX = window.open(
-      "https://twitter.com/intent/tweet?text=" + encodeURIComponent(textarea.value),
+  /* SNSボタン */
+  document.getElementById("btnX").onclick=()=>{
+    winX=window.open(
+      "https://twitter.com/intent/tweet?text="+encodeURIComponent(textarea.value),
       "SNS_X"
     );
   };
-
-  document.getElementById("btnThreads").onclick = () => {
-    winThreads = window.open("https://www.threads.net/intent/post", "SNS_THREADS");
+  document.getElementById("btnThreads").onclick=()=>{
+    winThreads=window.open("https://www.threads.net/intent/post","SNS_THREADS");
+  };
+  document.getElementById("btnBsky").onclick=()=>{
+    winBsky=window.open("https://bsky.app","SNS_BSKY");
+  };
+  document.getElementById("btnFb").onclick=()=>{
+    winFb=window.open("https://www.facebook.com/","SNS_FB");
   };
 
-  document.getElementById("btnBsky").onclick = () => {
-    winBsky = window.open("https://bsky.app", "SNS_BSKY");
-  };
-
-  document.getElementById("btnFb").onclick = () => {
-    winFb = window.open("https://www.facebook.com/", "SNS_FB");
-  };
-
-  /* ------------------------------
-     すべて閉じる
-     ------------------------------ */
-  document.getElementById("closeAll").onclick = () => {
-    [winX, winThreads, winBsky, winFb].forEach(w => {
-      if (w && !w.closed) w.close();
+  /* すべて閉じる */
+  function closeAll(){
+    [winX,winThreads,winBsky,winFb].forEach(w=>{
+      if(w && !w.closed) w.close();
     });
+  }
+  document.getElementById("closeAll").onclick=()=>{
+    closeAll();
     window.close();
   };
-
-  window.addEventListener("beforeunload", () => {
-    [winX, winThreads, winBsky, winFb].forEach(w => {
-      if (w && !w.closed) w.close();
-    });
-  });
-
+  window.addEventListener("beforeunload",closeAll);
 })();
 </script>
-
 </body>
 </html>
