@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>マルチSNS投稿ハブ（Share Target対応版）</title>
+<title>マルチSNS投稿ハブ（Share Target対応・PCウインドウ修正版）</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="manifest" href="manifest.json">
 <style>
@@ -74,7 +74,9 @@ button{
 
 <script>
 (function(){
-  window.name="MULTI_SNS_POST_HUB";
+
+  /* ★★★ 重要：window.name を削除（PCで閉じられないタブが出る問題の根本原因） ★★★ */
+  // window.name = "MULTI_SNS_POST_HUB"; ← 削除済み
 
   let winX=null,winThreads=null,winBsky=null,winFb=null;
   const textarea=document.getElementById("text");
@@ -82,19 +84,18 @@ button{
 
   const params=new URLSearchParams(location.search);
 
-  // 1) PCブックマークレットからの text（タイトル＋URL）
+  // PCブックマークレットからの text（タイトル＋URL）
   const textParam=params.get("text")||"";
 
-  // 2) Android Share Target API からのパラメータ
+  // Android Share Target API からのパラメータ
   const sharedUrl=params.get("url")||"";
   const sharedText=params.get("text")||"";
   const sharedTitle=params.get("title")||"";
 
-  // PCブックマークレット優先で textarea を初期化
+  // PCブックマークレット優先
   if(textParam){
     textarea.value=textParam;
   }else if(sharedTitle || sharedText){
-    // 共有から来た場合、タイトルやテキストがあれば textarea に入れる
     let combined="";
     if(sharedTitle) combined+=sharedTitle;
     if(sharedText){
@@ -104,7 +105,7 @@ button{
     textarea.value=combined;
   }
 
-  // URL入力欄の初期化（共有から URL があれば自動セット）
+  // URL欄の初期化（共有から URL があれば自動セット）
   if(sharedUrl){
     urlInput.value=sharedUrl;
   }
@@ -112,8 +113,8 @@ button{
   /* Amazonタイトル整形（ノイズ除去） */
   function cleanAmazonTitle(title){
     if(!title) return "";
-    title=title.replace(/^Amazon\.co\.jp:\s*/i,"");   // 先頭「Amazon.co.jp: 」除去
-    title=title.replace(/\s*:\s*[^:]+$/,"");          // 末尾「 : カテゴリ」除去
+    title=title.replace(/^Amazon\.co\.jp:\s*/i,"");
+    title=title.replace(/\s*:\s*[^:]+$/,"");
     return title.trim();
   }
 
@@ -141,7 +142,7 @@ button{
     return base+"?pc="+encodeURIComponent(url)+"&link_type=hybrid_url";
   }
 
-  /* URL → 投稿文生成（Amazon / 楽天 / その他） */
+  /* URL → 投稿文生成 */
   function generateFromURL(url,rawTitle){
     if(!url) return "";
 
@@ -166,7 +167,7 @@ button{
       }
     }
 
-    // その他（ブログ記事など）
+    // その他
     if(rawTitle){
       return rawTitle+"\n"+url;
     }else{
@@ -180,7 +181,7 @@ button{
     let title="";
     let url="";
 
-    // PCブックマークレット想定：「タイトル\nURL」形式を優先
+    // PCブックマークレット形式（タイトル＋URL）
     if(raw){
       let lines=raw.split("\n");
       if(lines.length>=2){
@@ -189,7 +190,7 @@ button{
       }
     }
 
-    // URL がまだ空なら、スマホ想定で URL欄から取得（Share Target も含む）
+    // URLが空ならスマホ想定
     if(!url){
       url=urlInput.value.trim();
     }
@@ -226,7 +227,7 @@ button{
     winFb=window.open("https://www.facebook.com/","SNS_FB");
   };
 
-  /* すべて閉じる */
+  /* すべて閉じる（PCでは完全に閉じられる） */
   function closeAll(){
     [winX,winThreads,winBsky,winFb].forEach(w=>{
       if(w && !w.closed) w.close();
@@ -237,6 +238,7 @@ button{
     window.close();
   };
   window.addEventListener("beforeunload",closeAll);
+
 })();
 </script>
 </body>
