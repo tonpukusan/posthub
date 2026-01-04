@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>マルチSNS投稿ハブ（Share Target対応・PCウインドウ修正版）</title>
+<title>マルチSNS投稿ハブ（Meta固定URL対応版）</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="manifest" href="manifest.json">
 <style>
@@ -75,8 +75,7 @@ button{
 <script>
 (function(){
 
-  /* ★★★ 重要：window.name を削除（PCで閉じられないタブが出る問題の根本原因） ★★★ */
-  // window.name = "MULTI_SNS_POST_HUB"; ← 削除済み
+  /* ★ window.name は削除済み（PCで閉じられないタブが出る問題の根本原因） */
 
   let winX=null,winThreads=null,winBsky=null,winFb=null;
   const textarea=document.getElementById("text");
@@ -211,23 +210,37 @@ button{
   };
 
   /* SNSボタン */
+
+  // X（閉じられる）
   document.getElementById("btnX").onclick=()=>{
     winX=window.open(
       "https://twitter.com/intent/tweet?text="+encodeURIComponent(textarea.value),
       "SNS_X"
     );
   };
+
+  // Threads（固定URL → 常に1タブだけ）
   document.getElementById("btnThreads").onclick=()=>{
-    winThreads=window.open("https://www.threads.net/intent/post","SNS_THREADS");
+    winThreads=window.open(
+      "https://www.threads.net/intent/post",
+      "SNS_THREADS"
+    );
   };
+
+  // Bluesky（閉じられる）
   document.getElementById("btnBsky").onclick=()=>{
     winBsky=window.open("https://bsky.app","SNS_BSKY");
   };
+
+  // Facebook（固定URL → 常に1タブだけ）
   document.getElementById("btnFb").onclick=()=>{
-    winFb=window.open("https://www.facebook.com/","SNS_FB");
+    winFb=window.open(
+      "https://www.facebook.com/home.php",
+      "SNS_FB"
+    );
   };
 
-  /* すべて閉じる（PCでは完全に閉じられる） */
+  /* すべて閉じる（Meta系は閉じられないが、1枚固定なので問題なし） */
   function closeAll(){
     [winX,winThreads,winBsky,winFb].forEach(w=>{
       if(w && !w.closed) w.close();
